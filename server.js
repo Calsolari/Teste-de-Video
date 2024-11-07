@@ -1,17 +1,21 @@
-// server.js
+// Servidor WebSocket básico em Node.js
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
 
+const wss = new WebSocket.Server({ port: 8080 });
 
 wss.on('connection', (ws) => {
+    console.log("Cliente conectado");
+
     ws.on('message', (message) => {
-        // Transmitir a mensagem para todos os outros clientes conectados
+        // Reenvia a mensagem para todos os clientes conectados
         wss.clients.forEach((client) => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
                 client.send(message);
             }
         });
     });
-});
 
-console.log('Servidor de sinalização WebSocket está rodando na porta 8080');
+    ws.on('close', () => {
+        console.log("Cliente desconectado");
+    });
+});

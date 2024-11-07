@@ -2,40 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket Test</title>
+    <title>WebRTC Video Call</title>
 </head>
 <body>
-    <h1>Teste de Conexão WebSocket</h1>
-    <div id="status">Status: Desconectado</div>
+    <h1>Chamada de Vídeo WebRTC</h1>
+    <video id="localVideo" autoplay playsinline></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+    <button id="startCall">Iniciar Chamada</button>
+    
     <script>
-        const serverUrl = "ws://10.107.140.2:8080"; // Altere para o IP e porta corretos
-        const statusDiv = document.getElementById("status");
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const startCallButton = document.getElementById('startCall');
         
-        // Conectando ao WebSocket
-        const socket = new WebSocket(serverUrl);
+        let localStream;
+        let peerConnection;
+        const signalingServer = new WebSocket("ws://10.107.140.2:8080/"); // Substitua pelo IP do servidor WebSocket
 
-        // Quando a conexão é estabelecida
-        socket.onopen = () => {
-            statusDiv.textContent = "Status: Conectado ao WebSocket!";
-            console.log("Conectado ao WebSocket");
+        signalingServer.onmessage = async (message) => {
+            const data = JSON.parse(message.data);
+
+            if (data.offer) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                signalingServer.send(JSON.stringify({ answer }));
+            } else if (data.answer) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            } else if (data.candidate) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
         };
 
-        // Quando uma mensagem é recebida
-        socket.onmessage = (event) => {
-            console.log("Mensagem recebida:", event.data);
-        };
+        async function startCall() {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = localStream;
 
-        // Quando a conexão é encerrada
-        socket.onclose = () => {
-            statusDiv.textContent = "Status: Desconectado";
-            console.log("Desconectado do WebSocket");
-        };
+            peerConnection = createPeerConnection();
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-        // Em caso de erro
-        socket.onerror = (error) => {
-            console.error("Erro na conexão WebSocket:", error);
-        };
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            signalingServer.send(JSON.stringify({ offer }));
+        }
+
+        function createPeerConnection() {
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    signalingServer.send(JSON.stringify({ candidate: event.candidate }));
+                }
+            };
+
+            pc.ontrack = (event) => {
+                if (!remoteVideo.srcObject) {
+                    remoteVideo.srcObject = event.streams[0];
+                }
+            };
+
+            return pc;
+        }
+
+        startCallButton.addEventListener('click', startCall);
     </script>
 </body>
 </html>
