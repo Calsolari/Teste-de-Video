@@ -1,19 +1,41 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Vídeo Local</title>
-    <link rel="stylesheet" href="style.css">
+    <title>WebSocket Test</title>
 </head>
 <body>
-    <div class="container">
-        <h1>Chamada de Vídeo com WebRTC</h1>
-        <video id="localVideo" autoplay playsinline></video>
-        <button id="startButton">Iniciar Vídeo</button>
-        <button id="stopButton">Parar Vídeo</button>
-    </div>
+    <h1>Teste de Conexão WebSocket</h1>
+    <div id="status">Status: Desconectado</div>
+    <script>
+        const serverUrl = "ws://10.107.140.2:8080"; // Altere para o IP e porta corretos
+        const statusDiv = document.getElementById("status");
+        
+        // Conectando ao WebSocket
+        const socket = new WebSocket(serverUrl);
 
-    <script src="script.js"></script>
+        // Quando a conexão é estabelecida
+        socket.onopen = () => {
+            statusDiv.textContent = "Status: Conectado ao WebSocket!";
+            console.log("Conectado ao WebSocket");
+        };
+
+        // Quando uma mensagem é recebida
+        socket.onmessage = (event) => {
+            console.log("Mensagem recebida:", event.data);
+        };
+
+        // Quando a conexão é encerrada
+        socket.onclose = () => {
+            statusDiv.textContent = "Status: Desconectado";
+            console.log("Desconectado do WebSocket");
+        };
+
+        // Em caso de erro
+        socket.onerror = (error) => {
+            console.error("Erro na conexão WebSocket:", error);
+        };
+    </script>
 </body>
 </html>
